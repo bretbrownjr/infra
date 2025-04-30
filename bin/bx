@@ -1,0 +1,49 @@
+#!/usr/bin/env -S cmake -P
+
+set(binary_dir build)
+set(arg_index 0)
+
+while(arg_index LESS CMAKE_ARGC)
+  set(current_arg "${CMAKE_ARGV${arg_index}}")
+  if("${current_arg}" STREQUAL "-B")
+    math(EXPR next_index "${arg_index} + 1")
+    if(next_index LESS CMAKE_ARGC)
+      set(binary_dir "${CMAKE_ARGV${next_index}}")
+      message(TRACE "Using binary directory: ${binary_dir}")
+    else()
+      message(FATAL_ERROR "No directory specified after -B flag")
+    endif()
+  endif()
+  math(EXPR arg_index "${arg_index} + 1")
+endwhile()
+
+set(infra_version "0.0.1")
+set(infra_hash "cf83e1357eefb8bdf1542850d66d8007d620e4050b5715dc83f4a921d36ce9ce47d0d13c5d85f2b0ff8318d2877eec2f63b931bd47417a81a538327af927da3e")
+set(infra_dir "${binary_dir}/beman.infra-${infra_version}")
+set(infra_cmake "${infra_dir}/cmake")
+set(infra_release_url "https://github.com/bemanproject/infra/archive/refs/tags/${infra_version}.zip")
+set(infra_release "${binary_dir}/infra-${infra_version}.zip")
+
+file(MAKE_DIRECTORY "${binary_dir}")
+message(STATUS
+  "Downloading infra release from \"${infra_release_url}\" to \"${infra_release}\"."
+)
+file(DOWNLOAD
+  "${infra_release_url}" "${infra_release}"
+  EXPECTED_HASH SHA512="${infra_hash}"
+  TIMEOUT 20
+)
+
+if(NOT EXISTS "${infra_dir}")
+  file(MAKE_DIRECTORY "${binary_dir}/infra")
+  execute_process(
+    COMMAND ${CMAKE_COMMAND} -E tar xzf "${infra_release}"
+    WORKING_DIRECTORY "${binary_dir}"
+    RESULT_VARIABLE unzip_result
+  )
+  if(unzip_result)
+    message(FATAL_ERROR "Failed to unzip ${infra_release}")
+  endif()
+endif()
+
+include("${infra_dir}/cmake/bootstrap.cmake")
