@@ -1,49 +1,57 @@
 #!/usr/bin/env -S cmake -P
+# SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 
-set(binary_dir build)
-set(arg_index 0)
+cmake_minimum_required(VERSION 3.24)
 
-while(arg_index LESS CMAKE_ARGC)
-  set(current_arg "${CMAKE_ARGV${arg_index}}")
-  if("${current_arg}" STREQUAL "-B")
-    math(EXPR next_index "${arg_index} + 1")
-    if(next_index LESS CMAKE_ARGC)
-      set(binary_dir "${CMAKE_ARGV${next_index}}")
-      message(TRACE "Using binary directory: ${binary_dir}")
-    else()
-      message(FATAL_ERROR "No directory specified after -B flag")
-    endif()
+if(DEFINED ENV{BX_VERSION})
+  set(bx_version "$ENV{BX_VERSION}")
+  if(NOT DEFINED ENV{BX_HASH})
+    message(FATAL_ERROR "BX_HASH must be set if BX_VERSION is set.")
   endif()
-  math(EXPR arg_index "${arg_index} + 1")
-endwhile()
+  set(bx_hash "$ENV{BX_HASH}")
+else()
+  set(bx_version "0.0.1")
+  set(bx_hash "9c804168d4ddb053286cc2ae8f4ebb3407daa5209e6d64797b3ab4a47102545a4fb51fbd713606310744ed76a6d827e288cbe50a31561830d9adc6d3a3a6966c")
+endif()
+message(TRACE "Using bx version: \"${bx_version}\".")
 
-set(infra_version "0.0.1")
-set(infra_hash "cf83e1357eefb8bdf1542850d66d8007d620e4050b5715dc83f4a921d36ce9ce47d0d13c5d85f2b0ff8318d2877eec2f63b931bd47417a81a538327af927da3e")
-set(infra_dir "${binary_dir}/beman.infra-${infra_version}")
-set(infra_cmake "${infra_dir}/cmake")
-set(infra_release_url "https://github.com/bemanproject/infra/archive/refs/tags/${infra_version}.zip")
-set(infra_release "${binary_dir}/infra-${infra_version}.zip")
+if(DEFINED ENV{BX_CACHE_DIR})
+  set(bx_cache_dir "$ENV{BX_CACHE_DIR}")
+else()
+  set(bx_cache_dir "${CMAKE_CURRENT_BINARY_DIR}/.bx_cache")
+endif()
+message(TRACE "Using bx cache directory: \"${bx_cache_dir}\".")
 
-file(MAKE_DIRECTORY "${binary_dir}")
-message(STATUS
-  "Downloading infra release from \"${infra_release_url}\" to \"${infra_release}\"."
-)
-file(DOWNLOAD
-  "${infra_release_url}" "${infra_release}"
-  EXPECTED_HASH SHA512="${infra_hash}"
-  TIMEOUT 20
-)
+if(DEFINED ENV{BX_INFRA_DIR})
+  set(bx_dir "$ENV{BX_INFRA_DIR}")
+else()
+  set(bx_dir "${bx_cache_dir}/infra-${bx_version}")
+endif()
+message(TRACE "Using bx directory: \"${bx_dir}\".")
 
-if(NOT EXISTS "${infra_dir}")
-  file(MAKE_DIRECTORY "${binary_dir}/infra")
-  execute_process(
-    COMMAND ${CMAKE_COMMAND} -E tar xzf "${infra_release}"
-    WORKING_DIRECTORY "${binary_dir}"
-    RESULT_VARIABLE unzip_result
+set(bx_path "${bx_dir}/cmake/bx.cmake")
+if(NOT EXISTS "${bx_path}")
+  set(bx_release_url "https://github.com/bretbrownjr/infra/archive/refs/tags/${bx_version}.tar.gz")
+  set(bx_release "${bx_cache_dir}/infra-${bx_version}.tar.gz")
+
+  file(MAKE_DIRECTORY "${bx_cache_dir}")
+  message(STATUS
+    "Downloading bx release from \"${bx_release_url}\" to \"${bx_release}\"."
   )
-  if(unzip_result)
-    message(FATAL_ERROR "Failed to unzip ${infra_release}")
+  file(DOWNLOAD
+    "${bx_release_url}" "${bx_release}"
+    EXPECTED_HASH "SHA512=${bx_hash}"
+    TIMEOUT 20
+  )
+
+  if(NOT EXISTS "${bx_dir}")
+    file(ARCHIVE_EXTRACT
+      INPUT "${bx_release}"
+      DESTINATION "${bx_cache_dir}"
+      TOUCH  # This might clue in CMake that a reconfigure could be appropriate
+    )
+    message(TRACE "Extracted bx release to \"${bx_dir}\".")
   endif()
 endif()
 
-include("${infra_dir}/cmake/bootstrap.cmake")
+include("${bx_path}")
