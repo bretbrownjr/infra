@@ -65,6 +65,12 @@ function(Bx_provideDependency method package_name)
         message(FATAL_ERROR "${Bx_lockfile}: ${Bx_error}")
     endif()
 
+    # Check if the dependencies array is empty
+    if(Bx_numDependencies EQUAL 0)
+        message(STATUS "No dependencies found in ${Bx_lockfile}.")
+        return()
+    endif()
+
     # Loop over each dependency object
     math(EXPR Bx_maxIndex "${Bx_numDependencies} - 1")
     foreach(Bx_index RANGE "${Bx_maxIndex}")
