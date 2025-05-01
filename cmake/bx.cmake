@@ -5,7 +5,7 @@ include_guard(GLOBAL)
 
 function(bx_cmake)
     message(STATUS "Configuring FetchContent provisioning mode.")
-    set(fetch_content_shim "${bx_dir}/cmake/use-fetch-content.cmake")
+    set(fetch_content_shim "${CMAKE_CURRENT_LIST_DIR}/use-fetch-content.cmake")
 
     set(shim_applied FALSE)
     set(ii 3) # Skip: cmake -P bx
